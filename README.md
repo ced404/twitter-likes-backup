@@ -47,3 +47,38 @@ API_ENDPOINT=api
 - fix. compatibility issues (transpile JS, ...)
 - improve frontend perfs
 - make a nicer frontend
+
+
+
+### References
+
+- https://publish.twitter.com/oembed?url=https%3A%2F%2Ftwitter.com%2FInterior%2Fstatus%2F507185938620219395
+- https://publish.twitter.com/oembed?url=https://twitter.com/Interior/status/507185938620219395    
+- https://publish.twitter.com/oembed?url=https%3A%2F%2Ftwitter.com%2FReal_CSS_Tricks%2Fstatus%2F980852366151843800
+
+```JavaScript
+// Get a tweet's embed URI
+const getEmbed = (screen_name, tweet_id) => {
+
+  let embedURL = encodeURIComponent (`https://twitter.com/$@{screen_name}/status/${tweet_id}`);
+  let embedQuery = `https://publish.twitter.com/oembed?url=${embedURL}`;
+
+  return new Promise ((resolve, reject) => {
+
+    var xhr = new XMLHttpRequest();
+    xhr.open ('GET', embedQuery);
+
+    xhr.onload = function () {
+      if (xhr.status == 200) resolve (JSON.parse (xhr.response));
+      else reject (Error(xhr.statusText));
+    };
+
+    xhr.onerror = function() {
+      reject (Error ("Network Error"));
+    };
+
+    xhr.send();
+  });
+
+};
+```

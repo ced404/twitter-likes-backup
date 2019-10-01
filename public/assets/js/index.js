@@ -1,282 +1,141 @@
-(function () {
+/**
+ * NodeList.prototype.forEach() polyfill
+ * https://developer.mozilla.org/en-US/docs/Web/API/NodeList/forEach#Polyfill
+ */
+if (window.NodeList && !NodeList.prototype.forEach) {
+  NodeList.prototype.forEach = function(callback, thisArg) {
+    thisArg = thisArg || window;
+    for (let i = 0; i < this.length; i++) {
+      callback.call(thisArg, this[i], i, this);
+    }
+  };
+}
+
+(function() {
   "use strict";
-  
+
   let State = {
+    DEV: true,
     API: {
-      likes: "https://twitter-likes-backup.glitch.me/api/likes",
-    },
-    likes: null,
-    tweetsContent: {},
-    currentPage: 0,
-    itemsPerPage: 100,
-    widgetLoaded: false
+      likes: "https://twitter-likes-backup.glitch.me/api/likes"
+    }
   };
-  
-  
-  const stripTags = (str) => {
-    return str.replace(/(<([^>]+)>)/ig,"");
-  };
-  
-  
-  
+
   // Get the liked tweets from the database
   const getLikes = () => {
-    
-    return new Promise ((resolve, reject) => {
-    
-      var xhr = new XMLHttpRequest();
-      xhr.open ('GET', State.API.likes);
+    return new Promise((resolve, reject) => {
+      let xhr = new XMLHttpRequest();
+      xhr.open("GET", State.API.likes);
 
-      xhr.onload = function () {
-        if (xhr.status == 200) resolve (JSON.parse (xhr.response));
+      xhr.onload = function() {
+        if (xhr.status == 200) resolve(JSON.parse(xhr.response));
         else reject(Error(xhr.statusText));
       };
 
       xhr.onerror = function() {
-        reject (Error ("Network Error"));
+        reject(Error("Network Error"));
       };
 
       xhr.send();
     });
   };
-  
-  
-  
-  // Setup Jets when all tweets are rendered by TwitterWidgets
-  const onAllTweetsLoaded = () => {
-    
-    // setup flex display
-    window.twttr.events.bind ('loaded', function (event) {
 
-      // console.info ('twitterWidgets loaded');
-
-      const container = document.querySelector ('[data-tweets]');
-      container.classList.add ('tweets-rendered');
-
-      // setup Jets
-      let jets = new window.Jets ({
-        searchTag: '[name="search"]',
-        contentTag: '[data-tweets]',
-        searchSelector: '*OR',
-        diacriticsMap: {
-          a: 'ÀÁÂÃÄÅàáâãäåĀāąĄ',
-          c: 'ÇçćĆčČ',
-          d: 'đĐďĎ',
-          e: 'ÈÉÊËèéêëěĚĒēęĘ',
-          i: 'ÌÍÎÏìíîïĪī',
-          l: 'łŁ',
-          n: 'ÑñňŇńŃ',
-          o: 'ÒÓÔÕÕÖØòóôõöøŌō',
-          r: 'řŘ',
-          s: 'ŠšśŚ',
-          t: 'ťŤ',
-          u: 'ÙÚÛÜùúûüůŮŪū',
-          y: 'ŸÿýÝ',
-          z: 'ŽžżŻźŹ'
-        }
-      });
-      
-      // then update Jets
-      // jets.update ();
-    });
-  };
-  
-  
-  
-  // Setup the rendered tweet search data
-  const onRenderedTweets = () => {
-    window.twttr.events.bind ('rendered', function (event) {
-      
-      let tweetElement = event.target;
-      let tweetID = parseInt (tweetElement.getAttribute ('data-tweet-id'));
-
-      // Reset tweet display prop for Jets to work correctly
-      tweetElement.style.removeProperty ('display');
-
-      // Setup the Jets attribute with the tweet's search data
-      let content = State.tweetsContent[tweetID];
-      event.target.setAttribute ('data-jets', content);
-      // console.log ('indexed content', tweetID, content);
-    });
-  };
-  
-  
-  
-  // Store tweets search data
-  const storeSearchData = (tweetID, content) => {
-    // Clean the content a little
-    // content = stripTags (content);
-    content = content.replace (/\r?\n|\r/g, " ");
-    content = content.replace(/^\s+|\s+$/g,'');
-    content = content.replace(/ +(?= )/g,'');
+  // Format search data for Jets
+  const formatSearchData = (tweetID, content) => {
+    content = content.replace(/\r?\n|\r/g, " ");
+    content = content.replace(/^\s+|\s+$/g, "");
+    content = content.replace(/ +(?= )/g, "");
     content = content.toLowerCase(); // Important for Jet!
-    State.tweetsContent[tweetID] = content;
+    return content;
   };
-  
-  
-  const chunk = (arr, size) => arr.reduce((chunks, el, i) => (i % size 
-    ? chunks[chunks.length - 1].push(el) 
-    : chunks.push([el])) && chunks, []);
-  
-  
+
+  // Setup Jets when all tweets are rendered by TwitterWidgets
+  const initJets = () => {
+    State.DEV && console.info("initJets");
+
+    //const container = document.querySelector("[data-tweets]");
+    //container.classList.add("tweets-rendered");
+
+    // setup Jets
+    let jets = new window.Jets({
+      searchTag: '[name="search"]',
+      contentTag: "[data-tweets]",
+      searchSelector: "*OR",
+      diacriticsMap: {
+        a: "ÀÁÂÃÄÅàáâãäåĀāąĄ",
+        c: "ÇçćĆčČ",
+        d: "đĐďĎ",
+        e: "ÈÉÊËèéêëěĚĒēęĘ",
+        i: "ÌÍÎÏìíîïĪī",
+        l: "łŁ",
+        n: "ÑñňŇńŃ",
+        o: "ÒÓÔÕÕÖØòóôõöøŌō",
+        r: "řŘ",
+        s: "ŠšśŚ",
+        t: "ťŤ",
+        u: "ÙÚÛÜùúûüůŮŪū",
+        y: "ŸÿýÝ",
+        z: "ŽžżŻźŹ"
+      }
+    });
+  };
+
   // Append tweets to the document
-  // Store the tweets search data
-  // Style the tweets with twitter widgets
-  const displayLikes = (page) => {
-    
-    page = page || State.currentPage;
-    let likes = State.likes[page];
-    
-    console.log('page likes', likes);
-
+  const displayLikes = likes => {
     // format and insert Tweets
-    // console.info ('likes', likes);
-    const container = document.querySelector ('[data-tweets]');
-    container.innerHTML = '';
-    
-    
-    for (let like of likes) {
-      let userUrl = `<a href="https://twitter.com/${like.screen_name}">@${like.screen_name}</a>`;
-      let tweetContent = `<p lang="en" dir="ltr">${like.text} [${userUrl}]</p>`;
-      let oEmbedURL = `<a href="https://twitter.com/${like.screen_name}/status/${like.id_str}?ref_src=twsrc%5Etfw">embed</a>`;
-  
-      // Tweeter Embed
-      let blockquote = document.createElement ('blockquote');
-      blockquote.classList.add ('twitter-tweet');
-      blockquote.setAttribute ('id', like.id);
-      blockquote.setAttribute ('data-lang', 'fr');
-      blockquote.innerHTML = tweetContent + oEmbedURL;
-      
-      // Concat the search data and store it
-      let content = [like.screen_name, like.text, like.screen_name].join (' ');
-      storeSearchData (like.id, content);
+    const container = document.querySelector("[data-tweets]");
+    container.innerHTML = "";
 
-      // Append the tweet
-      container.appendChild (blockquote);
-    };
-    
-    
-    // Load Twitter Widgets
-    if (!State.widgetLoaded) {
-      let po = document.createElement ('script'); 
-      po.type = 'text/javascript'; 
-      po.async = true;
-      po.src = 'https://platform.twitter.com/widgets.js';
-      po.id = 'twitterWidgets';
-      let s = document.getElementsByTagName ('script')[0]; 
-      s.parentNode.insertBefore(po, s);
-      
-      // When the script is loaded…
-      document.querySelector ('#twitterWidgets').addEventListener ('load', function () {
-        State.widgetLoaded = true;
-        // setup Jets search data for each Tweet rendered
-        onRenderedTweets ();
-        // then setup Jets when all Tweets are rendered
-        onAllTweetsLoaded ();
+    likes.forEach(function(like) {
+      window.requestAnimationFrame(function() {
+        //State.DEV && console.log('like', like);
+
+        let userUrl = `<a href="https://twitter.com/${like.screen_name}" target="_blank" rel="noreferrer">@${like.screen_name}</a>`;
+        let oEmbedURL = `<a href="https://twitter.com/${like.screen_name}/status/${like.id_str}?ref_src=twsrc%5Etfw" target="_blank" rel="noreferrer">View tweet</a>`;
+        let tweetContent = `<span lang="en" dir="ltr">${like.text}</span><br>${userUrl} • ${oEmbedURL}`;
+
+        let tweetDate = new Date(like.createdAt);
+        let date = tweetDate.getDate();
+        let month = tweetDate.getMonth(); //Be careful! January is 0 not 1
+        let year = tweetDate.getFullYear();
+        let dateString = date + "-" + (month + 1) + "-" + year;
+
+
+        // Tweeter Embed
+        let item = document.createElement("li");
+        item.classList.add("twitter-tweet");
+        item.setAttribute("id", like.id);
+        item.setAttribute("data-lang", "fr");
+        item.innerHTML = tweetContent;
+
+        // Concat the search data and store it
+        let content = [like.text, like.screen_name, dateString].join(" ");
+
+        // Format tweet content for Jets
+        content = formatSearchData(like.id, content);
+
+        // Setup the Jets attribute with the tweet's search data
+        item.setAttribute("data-jets", content);
+
+        // Append the tweet
+        container.appendChild(item);
       });
-    }
-    else {
-      twttr.widgets.load(container);
-    }
-    
+    });
 
+    initJets();
   };
-  
-  
-  
-  
-  const setPagination = (page = 0) => {
-    let urlParams = new URLSearchParams(window.location.search);
-    let urlPage = urlParams.get('page') || 0;
-    State.currentPage = page;
-    
-    console.log('page', page);
-    return State.currentPage;
-  };
-  
-  
-  
-  
-  const bindEvents = () => {
-    
-    let previousButton = document.querySelector('[data-button="previous"]');
-    let nextButton = document.querySelector('[data-button="next"]');
-    
-    previousButton.addEventListener('click', (e) => {
-      e.preventDefault();
-      console.log('State.currentPage previousButton',State.currentPage);
-      if (State.currentPage === 0) return;
-      State.currentPage--;
-      displayLikes ();
-    });
-    
-    nextButton.addEventListener('click', (e) => {
-      e.preventDefault();
-      console.log('State.currentPage nextButton',State.currentPage);
-      if (State.currentPage === State.likes.length) return;
-      State.currentPage++;
-      displayLikes ();
-    });
-  };
-  
-  
-  
-  
+
+  // Load then display tweets
   const init = () => {
-    
-    bindEvents();
-    
-    
-    getLikes().then (function (likes) {
-      
-      // get Tweeter likes in chunks
-      State.likes = chunk(likes, State.itemsPerPage);
-      
-      // get current page
-      setPagination();
-      
-      // display
-      displayLikes ();
-    }, 
-    function (error) {
-      console.error (error);
-    });
-    
+    getLikes().then(
+      function(likes) {
+        displayLikes(likes);
+      },
+      function(error) {
+        console.error(error);
+      }
+    );
   };
 
-
-  init ();
-
+  init();
 })();
-
-
-
-
-/*
-// https://publish.twitter.com/oembed?url=https%3A%2F%2Ftwitter.com%2FInterior%2Fstatus%2F507185938620219395
-// https://publish.twitter.com/oembed?url=https://twitter.com/Interior/status/507185938620219395    
-// https://publish.twitter.com/oembed?url=https%3A%2F%2Ftwitter.com%2FReal_CSS_Tricks%2Fstatus%2F980852366151843800
-const getEmbed = (screen_name, tweet_id) => {
-
-  let embedURL = encodeURIComponent (`https://twitter.com/$@{screen_name}/status/${tweet_id}`);
-  let embedQuery = `https://publish.twitter.com/oembed?url=${embedURL}`;
-
-  return new Promise ((resolve, reject) => {
-
-    var xhr = new XMLHttpRequest();
-    xhr.open ('GET', embedQuery);
-
-    xhr.onload = function () {
-      if (xhr.status == 200) resolve (JSON.parse (xhr.response));
-      else reject (Error(xhr.statusText));
-    };
-
-    xhr.onerror = function() {
-      reject (Error ("Network Error"));
-    };
-
-    xhr.send();
-  });
-
-};
-*/
