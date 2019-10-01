@@ -217,6 +217,7 @@ label {
   font-weight: 600;
   padding: 1rem;
   text-align: center;
+  flex-grow: 0;
 }
 
 input:focus {
@@ -225,11 +226,11 @@ input:focus {
 }
 
 input {
+  flex:1;
   border: none;
   display: block;
   margin: 0 auto;
   padding: 1em;
-  width: 100%;
   font-weight: 900;
 }
 
@@ -254,8 +255,5 @@ button:focus {
 @media all and (max-width: 425px) {
   h1 {
     font-size: 2rem;
-  }
-  label {
-    flex-basis: 100%;
   }
 }
